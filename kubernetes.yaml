@@ -54,13 +54,13 @@ spec:
                 configMapKeyRef:
                   name: curso-devops-lab3-config
                   key: USER_KEY
-                  optional: true
+                  optional: false
             - name: BD_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: curso-devops-lab3-secret
                   key: BD_PASSWORD
-                  optional: true
+                  optional: false
           resources:
             requests:
               memory: "256Mi"

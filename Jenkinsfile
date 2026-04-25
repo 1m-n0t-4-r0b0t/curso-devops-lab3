@@ -123,27 +123,35 @@ pipeline {
             }
         }
                             stage("3.Despliegue Continuo en rama Develop") {
+
     agent {
-        docker {
-            image 'alpine/k8s:1.34.6'
-            args '--network host'
-            reuseNode true
-        }
+
+        label 'mac-host'
+
     }
+
     steps {
-        withCredentials([file(credentialsId: 'credenciales-k8', variable: 'KUBECONFIG_FILE')]) {
-            sh '''
-                export KUBECONFIG="$KUBECONFIG_FILE"
-                kubectl version --client
-                kubectl cluster-info
-                kubectl apply -f kubernetes.yaml --validate=false
-                kubectl -n ${K8S_NAMESPACE} set image deployment/${K8S_DEPLOYMENT} ${K8S_CONTAINER}=${GHCR_REPO}:${BUILD_NUMBER}
-                kubectl -n ${K8S_NAMESPACE} rollout status deployment/${K8S_DEPLOYMENT}
-                kubectl -n ${K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
-                kubectl -n ${K8S_NAMESPACE} get pods -o wide
-            '''
-        }
+
+        sh '''
+
+            kubectl version --client
+
+            kubectl cluster-info
+
+            kubectl apply -f kubernetes.yaml --validate=false
+
+            kubectl -n ${K8S_NAMESPACE} set image deployment/${K8S_DEPLOYMENT} ${K8S_CONTAINER}=${GHCR_REPO}:${BUILD_NUMBER}
+
+            kubectl -n ${K8S_NAMESPACE} rollout status deployment/${K8S_DEPLOYMENT}
+
+            kubectl -n ${K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
+
+            kubectl -n ${K8S_NAMESPACE} get pods -o wide
+
+        '''
+
     }
+
 }
     }
 }
