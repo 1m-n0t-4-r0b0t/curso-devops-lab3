@@ -1,32 +1,45 @@
 pipeline {
-    agent {
-        docker
-        {
-            image "node:24"
-        }
-    }
+    agent any{
     stages {
-        stage("1.CI de la aplicación - DEPENDENCIAS") {
-            steps{
-                sh "npm install"
-                sh "ls -l"
-                sh "hostname"
+        stage("1.Integración continua") {
+            agent {
+                docker
+                {
+                    image "node:24"
+                }
+            }
+            stages {    
+                    stage("DEPENDENCIAS") {
+                            steps{
+                                sh "npm install"
+                                sh "ls -l"
+                                sh "hostname"
+                            }
+                    }
+                    stage("ESLINT") {
+                            steps{
+                                sh "npm run lint"
+                            }
+                    }
+                    stage("TESTS") {
+                            steps{
+                                sh "npm run test"
+                            }
+                    }
+                    stage("BUILD") {
+                            steps{
+                                sh "npm run build"
+                            }
+                    }
+                } 
             }
         }
-        stage("2.CI de la aplicación - ESLINT") {
+        stage("DOCKERFILE") {
             steps{
-                sh "npm run lint"
-            }
-        }
-        stage("3.CI de la aplicación - TESTS") {
-            steps{
-                sh "npm run test"
-            }
-        }
-        stage("4.CI de la aplicación - BUILD") {
-            steps{
-                sh "npm run build"
+                sh "docker build -t curso-devops-lab3"
             }
         }
     }
 }
+
+    
