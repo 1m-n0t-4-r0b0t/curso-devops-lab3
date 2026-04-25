@@ -69,12 +69,12 @@ pipeline {
 
         stage("2.Aseguramiento de Calidad") {
             agent {
-                docker {
-                    image 'sonarsource/sonar-scanner-cli'
-                    args '--network=devops-infra_default'
-                    reuseNode true
-                }
-            }
+            docker {
+              image 'sonarsource/sonar-scanner-cli:latest'
+             args "--network=devops-infra_default --entrypoint=''"
+             reuseNode true
+          }
+        }
             stages {
                 stage("VALIDACIÓN CÓDIGO") {
                     steps {
