@@ -142,8 +142,6 @@ pipeline {
                         kubectl apply -f kubernetes.yaml
                         kubectl -n ${env.K8S_NAMESPACE} set image deployment/${env.K8S_DEPLOYMENT} ${env.K8S_CONTAINER}=${env.GHCR_REPO}:${env.BUILD_NUMBER}
                         kubectl -n ${env.K8S_NAMESPACE} rollout status deployment/${env.K8S_DEPLOYMENT}
-                        kubectl -n ${env.K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
-                        kubectl -n ${env.K8S_NAMESPACE} get pods -o wide
                     """
                 }
             }
