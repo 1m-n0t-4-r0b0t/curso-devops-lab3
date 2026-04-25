@@ -122,36 +122,22 @@ pipeline {
                 }
             }
         }
-                            stage("3.Despliegue Continuo en rama Develop") {
 
-    agent {
-
-        label 'mac-host'
-
-    }
-
-    steps {
-
-        sh '''
-
-            kubectl version --client
-
-            kubectl cluster-info
-
-            kubectl apply -f kubernetes.yaml --validate=false
-
-            kubectl -n ${K8S_NAMESPACE} set image deployment/${K8S_DEPLOYMENT} ${K8S_CONTAINER}=${GHCR_REPO}:${BUILD_NUMBER}
-
-            kubectl -n ${K8S_NAMESPACE} rollout status deployment/${K8S_DEPLOYMENT}
-
-            kubectl -n ${K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
-
-            kubectl -n ${K8S_NAMESPACE} get pods -o wide
-
-        '''
-
-    }
-
-}
+        stage("3.Despliegue Continuo en rama Develop") {
+            agent { label 'mac-host' }
+            steps {
+                withEnv(["KUBECONFIG=${env.HOME}/.kube/config"]) {
+                    sh """
+                      export PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+                      /usr/local/bin/kubectl version --client
+                      /usr/local/bin/kubectl cluster-info
+                      /usr/local/bin/kubectl apply -f kubernetes.yaml
+                      /usr/local/bin/kubectl -n ${env.K8S_NAMESPACE} set image deployment/${env.K8S_DEPLOYMENT} ${env.K8S_CONTAINER}=${env.GHCR_REPO}:${env.BUILD_NUMBER}
+                      /usr/local/bin/kubectl -n ${env.K8S_NAMESPACE} rollout status deployment/${env.K8S_DEPLOYMENT}
+                      /usr/local/bin/kubectl get pods -n ${env.K8S_NAMESPACE}
+                    """
+                }
+            }
+        }
     }
 }
