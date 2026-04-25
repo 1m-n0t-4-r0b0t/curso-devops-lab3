@@ -1,5 +1,4 @@
 def tagAndPush(String localImage, String repo, String registry, String credential) {
-
     docker.withRegistry(registry, credential) {
         sh "docker tag ${localImage} ${repo}:latest"
         sh "docker tag ${localImage} ${repo}:${env.BUILD_NUMBER}"
@@ -8,24 +7,23 @@ def tagAndPush(String localImage, String repo, String registry, String credentia
         sh "docker push ${repo}:${env.BUILD_NUMBER}"
         sh "docker push ${repo}:${env.APP_SEMANTIC_VERSION}"
     }
-
 }
 
 pipeline {
     agent any
+
     environment {
         IMAGE_NAME = "curso-devops-lab3"
-        DH_REPO    = "moniqa/curso-devops-lab3"
-        GHCR_REPO  = "ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3"
-       // K8S_NAMESPACE  = "curso"
-        //K8S_DEPLOYMENT = "curso-devops-deployment"
-        //K8S_CONTAINER  = "contenedor-curso-devops"
+        DH_REPO = "moniqa/curso-devops-lab3"
+        GHCR_REPO = "ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3"
+    }
 
     stages {
         stage("1.Integración continua") {
             agent {
                 docker {
                     image 'node:24'
+                    reuseNode true
                 }
             }
             stages {
@@ -54,8 +52,21 @@ pipeline {
                         sh "npm run build"
                     }
                 }
+
+                stage("VERSIÓN") {
+                    steps {
+                        script {
+                            env.APP_SEMANTIC_VERSION = sh(
+                                script: "node -p \"require('./package.json').version\"",
+                                returnStdout: true
+                            ).trim()
+                            echo "Versión detectada: ${env.APP_SEMANTIC_VERSION}"
+                        }
+                    }
+                }
             }
         }
+
         stage("2.Aseguramiento de Calidad") {
             agent {
                 docker {
@@ -66,24 +77,22 @@ pipeline {
             }
             stages {
                 stage("VALIDACIÓN CÓDIGO") {
-                steps {
-                    withSonarQubeEnv('sonarqube'){
-                         sh "sonar-scanner"
-                    }
-                }
-            }
-                stage("VALIDACIÓN QUALITY GATE") {
-                steps {
-                    script{
-                        def qualityGate = waitForQualityGate()
-                        if(qualityGate.status != 'OK'){
-                            error "El Quality Gate ha fallado con el siguiente error : $(qualityGate.status)"
+                    steps {
+                        withSonarQubeEnv('sonarqube') {
+                            sh "sonar-scanner"
                         }
                     }
                 }
-            }      
 
-
+                stage("VALIDACIÓN QUALITY GATE") {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
+                }
+            }
+        }
 
         stage("DOCKERFILE") {
             steps {
@@ -92,11 +101,23 @@ pipeline {
                 script {
                     if (!env.APP_SEMANTIC_VERSION?.trim()) {
                         error("APP_SEMANTIC_VERSION no definida en el stage anterior")
-                    } 
-                    tagAndPush(env.IMAGE_NAME, env.DH_REPO, "https://index.docker.io/v1/", "credenciales-dockerhub" )
-                    tagAndPush(env.IMAGE_NAME, env.GHCR_REPO, "https://ghcr.io", "credenciales-github" )
+                    }
+
+                    tagAndPush(
+                        env.IMAGE_NAME,
+                        env.DH_REPO,
+                        "https://index.docker.io/v1/",
+                        "credenciales-dockerhub"
+                    )
+
+                    tagAndPush(
+                        env.IMAGE_NAME,
+                        env.GHCR_REPO,
+                        "https://ghcr.io",
+                        "credenciales-github"
+                    )
                 }
-           }
-        }   
+            }
+        }
     }
 }
