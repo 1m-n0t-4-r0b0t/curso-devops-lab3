@@ -16,6 +16,9 @@ pipeline {
         IMAGE_NAME = "curso-devops-lab3"
         DH_REPO = "moniqa/curso-devops-lab3"
         GHCR_REPO = "ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3"
+        K8S_NAMESPACE = "mmeneses"
+        K8S_DEPLOYMENT = "curso-devops-lab3-deployment"
+        K8S_CONTAINER = "contenedor-curso-devops-lab3"
     }
 
     stages {
@@ -69,12 +72,12 @@ pipeline {
 
         stage("2.Aseguramiento de Calidad") {
             agent {
-            docker {
-              image 'sonarsource/sonar-scanner-cli:latest'
-             args "--network=devops-infra_default --entrypoint=''"
-             reuseNode true
-          }
-        }
+                docker {
+                    image 'sonarsource/sonar-scanner-cli:latest'
+                    args "--network=devops-infra_default --entrypoint=''"
+                    reuseNode true
+                }
+            }
             stages {
                 stage("VALIDACIÓN CÓDIGO") {
                     steps {
@@ -116,6 +119,32 @@ pipeline {
                         "https://ghcr.io",
                         "credenciales-github"
                     )
+                }
+            }
+        }
+
+        stage("3.Despliegue Continuo en rama Develop") {
+            agent {
+                docker {
+                    image 'alpine/k8s:1.34.6'
+                    reuseNode true
+                }
+            }
+            steps {
+                script {
+                     if (!env.BUILD_NUMBER?.trim()) {
+                     error("BUILD_NUMBER no definido en el despliegue")
+                     }
+                }
+
+                withKubeConfig(['credenciales-k8']) {
+                    sh """
+                        kubectl apply -f kubernetes.yaml
+                        kubectl -n ${env.K8S_NAMESPACE} set image deployment/${env.K8S_DEPLOYMENT} ${env.K8S_CONTAINER}=${env.GHCR_REPO}:${env.BUILD_NUMBER}
+                        kubectl -n ${env.K8S_NAMESPACE} rollout status deployment/${env.K8S_DEPLOYMENT}
+                        kubectl -n ${env.K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
+                        kubectl -n ${env.K8S_NAMESPACE} get pods -o wide
+                    """
                 }
             }
         }
