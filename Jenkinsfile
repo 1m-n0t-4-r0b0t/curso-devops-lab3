@@ -8,8 +8,8 @@ pipeline {
     stages {
         stage("1.CI de la aplicación") {
             steps{
-                sh "npm install'"
-                sh "ls -l'"
+                sh "npm install"
+                sh "ls -l"
                 sh "hostname'"
             }
         }
