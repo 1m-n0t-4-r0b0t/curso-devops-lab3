@@ -1,12 +1,31 @@
+def tagAndPush(String localImage, String repo, String registry, String credential) {
+
+    docker.withRegistry(registry, credential) {
+        sh "docker tag ${localImage} ${repo}:latest"
+        sh "docker tag ${localImage} ${repo}:${env.BUILD_NUMBER}"
+        sh "docker tag ${localImage} ${repo}:${env.APP_SEMANTIC_VERSION}"
+        sh "docker push ${repo}:latest"
+        sh "docker push ${repo}:${env.BUILD_NUMBER}"
+        sh "docker push ${repo}:${env.APP_SEMANTIC_VERSION}"
+    }
+
+}
+
 pipeline {
     agent any
+    environment {
+        IMAGE_NAME = "curso-devops-lab3"
+        DH_REPO    = "moniqa/curso-devops-lab3"
+        GHCR_REPO  = "ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3"
+       // K8S_NAMESPACE  = "curso"
+        //K8S_DEPLOYMENT = "curso-devops-deployment"
+        //K8S_CONTAINER  = "contenedor-curso-devops"
 
     stages {
         stage("1.Integración continua") {
             agent {
                 docker {
                     image 'node:24'
-                    reuseNode true
                 }
             }
             stages {
@@ -26,7 +45,7 @@ pipeline {
 
                 stage("TESTS") {
                     steps {
-                        sh "npm run test"
+                        sh "npm run test:cov"
                     }
                 }
 
@@ -35,47 +54,49 @@ pipeline {
                         sh "npm run build"
                     }
                 }
-
-                stage("VERSION") {
-                    steps {
-                        script {
-                            env.SEMANTIC = sh(
-                                script: "node -p \"require('./package.json').version\"",
-                                returnStdout: true
-                            ).trim()
-                            echo "Version detectada: ${env.SEMANTIC}"
+            }
+        }
+        stage("2.Aseguramiento de Calidad") {
+            agent {
+                docker {
+                    image 'sonarsource/sonar-scanner-cli'
+                    args '--network=devops-infra_default'
+                    reuseNode true
+                }
+            }
+            stages {
+                stage("VALIDACIÓN CÓDIGO") {
+                steps {
+                    withSonarQubeEnv('sonarqube'){
+                         sh "sonar-scanner"
+                    }
+                }
+            }
+                stage("VALIDACIÓN QUALITY GATE") {
+                steps {
+                    script{
+                        def qualityGate = waitForQualityGate()
+                        if(qualityGate.status != 'OK'){
+                            error "El Quality Gate ha fallado con el siguiente error : $(qualityGate.status)"
                         }
                     }
                 }
-            }
-        }
+            }      
+
+
 
         stage("DOCKERFILE") {
             steps {
-                sh "docker build -t curso-devops-lab3 ."
+                sh "docker build -t ${env.IMAGE_NAME} ."
 
                 script {
-                    docker.withRegistry("https://index.docker.io/v1/", "credenciales-dockerhub") {
-                        sh "docker tag curso-devops-lab3 moniqa/curso-devops-lab3:latest"
-                        sh "docker tag curso-devops-lab3 moniqa/curso-devops-lab3:${env.BUILD_NUMBER}"
-                        sh "docker tag curso-devops-lab3 moniqa/curso-devops-lab3:${env.SEMANTIC}"
-
-                        sh "docker push moniqa/curso-devops-lab3:latest"
-                        sh "docker push moniqa/curso-devops-lab3:${env.BUILD_NUMBER}"
-                        sh "docker push moniqa/curso-devops-lab3:${env.SEMANTIC}"
-                    }
-
-                    docker.withRegistry("https://ghcr.io", "credenciales-github") {
-                        sh "docker tag curso-devops-lab3 ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3:latest"
-                        sh "docker tag curso-devops-lab3 ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3:${env.BUILD_NUMBER}"
-                        sh "docker tag curso-devops-lab3 ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3:${env.SEMANTIC}"
-
-                        sh "docker push ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3:latest"
-                        sh "docker push ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3:${env.BUILD_NUMBER}"
-                        sh "docker push ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3:${env.SEMANTIC}"
-                    }
+                    if (!env.APP_SEMANTIC_VERSION?.trim()) {
+                        error("APP_SEMANTIC_VERSION no definida en el stage anterior")
+                    } 
+                    tagAndPush(env.IMAGE_NAME, env.DH_REPO, "https://index.docker.io/v1/", "credenciales-dockerhub" )
+                    tagAndPush(env.IMAGE_NAME, env.GHCR_REPO, "https://ghcr.io", "credenciales-github" )
                 }
-            }
-        }
+           }
+        }   
     }
 }
