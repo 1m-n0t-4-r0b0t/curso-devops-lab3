@@ -1,10 +1,16 @@
 pipeline {
-    agent any
+    agent {
+        docker
+        {
+            image "node:24"
+        }
+    }
     stages {
-        stage("etapa1") {
+        stage("1.CI de la aplicación") {
             steps{
-                sh "echo 'mi primer step en mi primera etapa'"
-                sh "echo 'mi segundo step en mi primera etapa'"
+                sh "npm install'"
+                sh "ls -l'"
+                sh "hostname'"
             }
         }
         stage("mi segunda etapa") {
