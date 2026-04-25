@@ -10,7 +10,7 @@ pipeline {
             steps{
                 sh "npm install"
                 sh "ls -l"
-                sh "hostname'"
+                sh "hostname"
             }
         }
         stage("mi segunda etapa") {
