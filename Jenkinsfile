@@ -1,45 +1,46 @@
 pipeline {
-    agent any{
+    agent any
+
     stages {
         stage("1.Integración continua") {
             agent {
-                docker
-                {
-                    image "node:24"
+                docker {
+                    image 'node:24'
                 }
             }
-            stages {    
-                    stage("DEPENDENCIAS") {
-                            steps{
-                                sh "npm install"
-                                sh "ls -l"
-                                sh "hostname"
-                            }
+            stages {
+                stage("DEPENDENCIAS") {
+                    steps {
+                        sh "npm install"
+                        sh "ls -l"
+                        sh "hostname"
                     }
-                    stage("ESLINT") {
-                            steps{
-                                sh "npm run lint"
-                            }
+                }
+
+                stage("ESLINT") {
+                    steps {
+                        sh "npm run lint"
                     }
-                    stage("TESTS") {
-                            steps{
-                                sh "npm run test"
-                            }
+                }
+
+                stage("TESTS") {
+                    steps {
+                        sh "npm run test"
                     }
-                    stage("BUILD") {
-                            steps{
-                                sh "npm run build"
-                            }
+                }
+
+                stage("BUILD") {
+                    steps {
+                        sh "npm run build"
                     }
-                } 
+                }
             }
         }
+
         stage("DOCKERFILE") {
-            steps{
-                sh "docker build -t curso-devops-lab3"
+            steps {
+                sh "docker build -t curso-devops-lab3 ."
             }
         }
     }
 }
-
-    
