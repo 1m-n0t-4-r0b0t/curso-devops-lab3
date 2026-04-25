@@ -122,26 +122,24 @@ pipeline {
                 }
             }
         }
+                stage("3.Despliegue Continuo en rama Develop") {
 
-        stage("3.Despliegue Continuo en rama Develop") {
             agent {
                 docker {
                     image 'alpine/k8s:1.34.6'
                     reuseNode true
                 }
             }
-            steps {
-                script {
-                     if (!env.BUILD_NUMBER?.trim()) {
-                     error("BUILD_NUMBER no definido en el despliegue")
-                     }
-                }
 
-                withKubeConfig(['credenciales-k8']) {
+            steps {
+
+                withKubeConfig(credentialsId: 'credenciales-k8') {
                     sh """
                         kubectl apply -f kubernetes.yaml
                         kubectl -n ${env.K8S_NAMESPACE} set image deployment/${env.K8S_DEPLOYMENT} ${env.K8S_CONTAINER}=${env.GHCR_REPO}:${env.BUILD_NUMBER}
                         kubectl -n ${env.K8S_NAMESPACE} rollout status deployment/${env.K8S_DEPLOYMENT}
+                        kubectl -n ${env.K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
+                        kubectl -n ${env.K8S_NAMESPACE} get pods -o wide
                     """
                 }
             }
