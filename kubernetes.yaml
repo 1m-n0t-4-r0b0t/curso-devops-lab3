@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mmeneses
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: curso-devops-lab3-config
+  namespace: mmeneses
+data:
+  USER_KEY: "monika-meneses"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: curso-devops-lab3-secret
+  namespace: mmeneses
+type: Opaque
+stringData:
+  BD_PASSWORD: "MiCalificacionEs5.0"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: curso-devops-lab3-deployment
+  namespace: mmeneses
+  labels:
+    app: curso-devops-lab3-stack
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: curso-devops-lab3-stack
+  template:
+    metadata:
+      labels:
+        app: curso-devops-lab3-stack
+    spec:
+      containers:
+        - name: contenedor-curso-devops-lab3
+          image: ghcr.io/1m-n0t-4-r0b0t/curso-devops-lab3:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: development
+            - name: PORT
+              value: "3000"
+            - name: USER_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: curso-devops-lab3-config
+                  key: USER_KEY
+                  optional: false
+            - name: BD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: curso-devops-lab3-secret
+                  key: BD_PASSWORD
+                  optional: false
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: curso-devops-lab3-service
+  namespace: mmeneses
+  labels:
+    app: curso-devops-lab3-stack
+spec:
+  selector:
+    app: curso-devops-lab3-stack
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
