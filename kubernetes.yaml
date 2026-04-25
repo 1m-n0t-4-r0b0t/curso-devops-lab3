@@ -19,7 +19,8 @@ metadata:
 type: Opaque
 stringData:
   BD_PASSWORD: "MiCalificacionEs5.0"
----
+---kubectl version --client
+which kubectl
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -53,13 +54,13 @@ spec:
                 configMapKeyRef:
                   name: curso-devops-lab3-config
                   key: USER_KEY
-                  optional: false
+                  optional: true
             - name: BD_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: curso-devops-lab3-secret
                   key: BD_PASSWORD
-                  optional: false
+                  optional: true
           resources:
             requests:
               memory: "256Mi"

@@ -123,45 +123,27 @@ pipeline {
             }
         }
                             stage("3.Despliegue Continuo en rama Develop") {
-
-                agent {
-
-                    docker {
-
-                        image 'alpine/k8s:1.34.6'
-
-                        reuseNode true
-
-                    }
-
-                }
-
-                steps {
-
-                    withCredentials([file(credentialsId: 'credenciales-k8', variable: 'KUBECONFIG_FILE')]) {
-
-                        sh """
-
-                            export KUBECONFIG=$KUBECONFIG_FILE
-
-                            kubectl version --client
-
-                            kubectl apply -f kubernetes.yaml
-
-                            kubectl -n ${env.K8S_NAMESPACE} set image deployment/${env.K8S_DEPLOYMENT} ${env.K8S_CONTAINER}=${env.GHCR_REPO}:${env.BUILD_NUMBER}
-
-                            kubectl -n ${env.K8S_NAMESPACE} rollout status deployment/${env.K8S_DEPLOYMENT}
-
-                            kubectl -n ${env.K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
-
-                            kubectl -n ${env.K8S_NAMESPACE} get pods -o wide
-
-                        """
-
-                    }
-
-                }
-
-            }
+    agent {
+        docker {
+            image 'alpine/k8s:1.34.6'
+            args '--network host'
+            reuseNode true
+        }
+    }
+    steps {
+        withCredentials([file(credentialsId: 'credenciales-k8', variable: 'KUBECONFIG_FILE')]) {
+            sh '''
+                export KUBECONFIG="$KUBECONFIG_FILE"
+                kubectl version --client
+                kubectl cluster-info
+                kubectl apply -f kubernetes.yaml --validate=false
+                kubectl -n ${K8S_NAMESPACE} set image deployment/${K8S_DEPLOYMENT} ${K8S_CONTAINER}=${GHCR_REPO}:${BUILD_NUMBER}
+                kubectl -n ${K8S_NAMESPACE} rollout status deployment/${K8S_DEPLOYMENT}
+                kubectl -n ${K8S_NAMESPACE} wait --for=condition=Ready pod -l app=curso-devops-lab3-stack --timeout=180s
+                kubectl -n ${K8S_NAMESPACE} get pods -o wide
+            '''
+        }
+    }
+}
     }
 }
